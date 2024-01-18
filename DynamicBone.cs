@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using Unity.Mathematics;
 using UnityEngine;
 
 namespace Seino.DynamicBone
 {
-    public class SeinoDynamicBone : MonoBehaviour
+    public class DynamicBone : MonoBehaviour
     {
         [Title("全局设置")]
         [LabelText("帧率")]
@@ -32,23 +31,34 @@ namespace Seino.DynamicBone
         [LabelText("阻尼曲线")]
         public AnimationCurve m_DampingCurve;
         
+        [Space]
         [Range(0, 1)]
         [LabelText("弹性")]
         public float m_Elasticity = 0.1f;
         [LabelText("弹性曲线")]
         public AnimationCurve m_ElasticityCurve;
         
+        [Space]
         [Range(0, 1)]
         [LabelText("刚性")]
         public float m_Stiffness = 0.1f;
         [LabelText("刚性曲线")]
         public AnimationCurve m_StiffnessCurve;
         
+        [Space]
         [Range(0, 1)]
         [LabelText("惯性")]
         public float m_Inert = 0.5f;
         [LabelText("惯性曲线")]
         public AnimationCurve m_InertCurve;
+
+        [Space]
+        [LabelText("质点半径")] 
+        public float m_Radius;
+        [LabelText("半径曲线")] 
+        public AnimationCurve m_RadiusCurve;
+        
+        private List<ParticleTree> m_ParticleTrees = new();
 
         private float3 m_ObjectMove;
         private float3 m_ObjectPrevPosition;
@@ -57,10 +67,8 @@ namespace Seino.DynamicBone
         private float m_Time;
         private float m_Weight = 1.0f;
         private int m_PreUpdateCount;
-
-        private List<ParticleTree> m_ParticleTrees = new();
         private float m_DeltaTime;
-
+        
         private static int s_UpdateCount;
         private static int s_PrepareFrame;
 
@@ -188,15 +196,26 @@ namespace Seino.DynamicBone
 
             foreach (var p in pt.m_Particles)
             {
+                if (pt.m_BoneTotalLength > 0)
+                {
+                    float samplePos = p.m_BoneLength / pt.m_BoneTotalLength;
+                    if (m_DampingCurve != null && m_DampingCurve.keys.Length > 0)
+                        p.m_Damping *= m_DampingCurve.Evaluate(samplePos);
+                    if (m_ElasticityCurve != null && m_ElasticityCurve.keys.Length > 0)
+                        p.m_Elasticity *= m_ElasticityCurve.Evaluate(samplePos);
+                    if (m_StiffnessCurve != null && m_StiffnessCurve.keys.Length > 0)
+                        p.m_Stiffness *= m_StiffnessCurve.Evaluate(samplePos);
+                    if (m_InertCurve != null && m_InertCurve.keys.Length > 0)
+                        p.m_Inert *= m_InertCurve.Evaluate(samplePos);
+                    if (m_RadiusCurve != null && m_RadiusCurve.keys.Length > 0)
+                        p.m_Radius *= m_RadiusCurve.Evaluate(samplePos);
+                }
+                
                 p.m_Damping = Mathf.Clamp01(this.m_Damping);
                 p.m_Elasticity =  Mathf.Clamp01(this.m_Elasticity);
                 p.m_Stiffness =  Mathf.Clamp01(this.m_Stiffness);
                 p.m_Inert =  Mathf.Clamp01(this.m_Inert);
-
-                if (pt.m_BoneTotalLength > 0)
-                {
-                    
-                }
+                p.m_Radius = Mathf.Abs(p.m_Radius);
             }
         }
 
