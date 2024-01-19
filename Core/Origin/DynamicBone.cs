@@ -83,7 +83,41 @@ namespace Seino.DynamicBone
         
         private static int s_UpdateCount;
         private static int s_PrepareFrame;
+        
+        public class ParticleTree
+        {
+            public Transform m_Root;
+            public float3 m_LocalGravity;
+            public float3 m_RestGravity;
+            public float4x4 m_RootWorldToLocalMatrix;
+            public float m_BoneTotalLength;
+            public List<Particle> m_Particles = new();
+        }
+        
+        public class Particle
+        {
+            public Transform m_Transform;
+            public int m_ParentIndex;
+            public int m_ChildCount;
+            public float m_Damping;
+            public float m_Elasticity;
+            public float m_Stiffness;
+            public float m_Inert;
+            public float m_Friction;
+            public float m_Radius;
+            public float m_BoneLength;
+            public bool m_IsCollide;
 
+            public float3 m_Position;
+            public float3 m_PrevPosition;
+            public float3 m_InitLocalPosition;
+            public quaternion m_InitLocalRotation;
+
+            public float3 m_TransformPosition;
+            public float3 m_TransformLocalPosition;
+            public float4x4 m_TransformLocalToWorldMatrix;
+        }
+        
         private void Start()
         {
             SetupParticles();
