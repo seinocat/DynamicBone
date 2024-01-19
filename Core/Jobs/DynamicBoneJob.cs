@@ -10,20 +10,18 @@ namespace Seino.DynamicBone
     {
         public int m_Index;
         public float3 m_ObjectMove;
+        public float3 m_ObjectPosition;
         public float3 m_ObjectPrevPosition;
+        public quaternion m_ObjectRotation;
         public float3 m_Gravity;
         public float3 m_LocalGravity;
         public float3 m_Force;
+        public float3 m_FinalForce;
         public float m_ObjectScale;
         public float m_Weight;
-        public float m_UpdateRate;
         public int m_ParticleCount;
         public int m_Offset;
         public float4x4 m_RootWorldToLocalMatrix;
-
-
-        public float3 m_RootWorldPosition;
-        public quaternion m_RootWorldRotation;
     }
         
     public struct ParticleInfo
@@ -40,12 +38,12 @@ namespace Seino.DynamicBone
         public bool m_IsCollide;
 
         public float3 m_Position;
+        public quaternion m_Rotation;
         public float3 m_PrevPosition;
         public float3 m_InitLocalPosition;
         public quaternion m_InitLocalRotation;
 
         public float3 m_WorldPostion;
-        public quaternion m_WorldRotation;
         public float3 m_LocalPosition;
         public quaternion m_LocalRotation;
         public float3 m_ParentScale;
@@ -54,11 +52,9 @@ namespace Seino.DynamicBone
     public class DynamicBoneJob : MonoBehaviour
     {
         [Title("全局设置")]
-        [LabelText("帧率")]
-        public float m_UpdateRate = 60;
-        
+
         [LabelText("重力")]
-        public float3 m_Gravity = new(0, -0.002f, 0);
+        public float3 m_Gravity = float3.zero;
 
         [LabelText("外力")] 
         public float3 m_Force;
@@ -181,7 +177,7 @@ namespace Seino.DynamicBone
                 p.m_WorldPostion = p.m_Position = p.m_PrevPosition = b.position;
                 p.m_LocalPosition = p.m_InitLocalPosition = b.localPosition;
                 p.m_LocalRotation = p.m_InitLocalRotation = b.localRotation;
-                p.m_WorldRotation = b.rotation;
+                p.m_Rotation = b.rotation;
                 p.m_ParentScale = b.parent.lossyScale;
             }
 
