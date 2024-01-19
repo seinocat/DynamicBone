@@ -15,6 +15,7 @@ namespace Seino.DynamicBone
         public float m_Friction;
         public float m_Radius;
         public float m_BoneLength;
+        public bool m_IsCollide;
 
         public float3 m_Position;
         public float3 m_PrevPosition;

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using Unity.Mathematics;
 using UnityEngine;
@@ -24,6 +25,9 @@ namespace Seino.DynamicBone
         [LabelText("根节点")]
         public List<Transform> m_Roots;
 
+        [LabelText("碰撞")] 
+        public List<DynamicBoneColliderBase> m_Colliders;
+
         [Title("参数")]
         [Range(0, 1)]
         [LabelText("阻尼")]
@@ -47,6 +51,13 @@ namespace Seino.DynamicBone
         
         [Space]
         [Range(0, 1)]
+        [LabelText("摩擦力")]
+        public float m_Friction = 0.1f;
+        [LabelText("摩擦力曲线")]
+        public AnimationCurve m_FrictionCurve;
+        
+        [Space]
+        [Range(0, 1)]
         [LabelText("惯性")]
         public float m_Inert = 0.5f;
         [LabelText("惯性曲线")]
@@ -59,6 +70,7 @@ namespace Seino.DynamicBone
         public AnimationCurve m_RadiusCurve;
         
         private List<ParticleTree> m_ParticleTrees = new();
+        private List<DynamicBoneColliderBase> m_EffectiveColliders;
 
         private float3 m_ObjectMove;
         private float3 m_ObjectPrevPosition;
@@ -196,6 +208,13 @@ namespace Seino.DynamicBone
 
             foreach (var p in pt.m_Particles)
             {
+                p.m_Damping = Mathf.Clamp01(this.m_Damping);
+                p.m_Elasticity =  Mathf.Clamp01(this.m_Elasticity);
+                p.m_Stiffness =  Mathf.Clamp01(this.m_Stiffness);
+                p.m_Inert =  Mathf.Clamp01(this.m_Inert);
+                p.m_Friction = Mathf.Clamp01(this.m_Friction);
+                p.m_Radius = Mathf.Abs(this.m_Radius);
+                
                 if (pt.m_BoneTotalLength > 0)
                 {
                     float samplePos = p.m_BoneLength / pt.m_BoneTotalLength;
@@ -207,14 +226,17 @@ namespace Seino.DynamicBone
                         p.m_Stiffness *= m_StiffnessCurve.Evaluate(samplePos);
                     if (m_InertCurve != null && m_InertCurve.keys.Length > 0)
                         p.m_Inert *= m_InertCurve.Evaluate(samplePos);
+                    if (m_FrictionCurve != null && m_FrictionCurve.keys.Length > 0)
+                        p.m_Friction *= m_FrictionCurve.Evaluate(samplePos);
                     if (m_RadiusCurve != null && m_RadiusCurve.keys.Length > 0)
                         p.m_Radius *= m_RadiusCurve.Evaluate(samplePos);
                 }
                 
-                p.m_Damping = Mathf.Clamp01(this.m_Damping);
-                p.m_Elasticity =  Mathf.Clamp01(this.m_Elasticity);
-                p.m_Stiffness =  Mathf.Clamp01(this.m_Stiffness);
-                p.m_Inert =  Mathf.Clamp01(this.m_Inert);
+                p.m_Damping = Mathf.Clamp01(p.m_Damping);
+                p.m_Elasticity =  Mathf.Clamp01(p.m_Elasticity);
+                p.m_Stiffness =  Mathf.Clamp01(p.m_Stiffness);
+                p.m_Inert =  Mathf.Clamp01(p.m_Inert);
+                p.m_Friction = Mathf.Clamp01(p.m_Friction);
                 p.m_Radius = Mathf.Abs(p.m_Radius);
             }
         }
@@ -267,6 +289,7 @@ namespace Seino.DynamicBone
             foreach (var p in pt.m_Particles)
             {
                 p.m_Position = p.m_PrevPosition = p.m_Transform.position;
+                p.m_IsCollide = false;
             }
         }
 
@@ -298,6 +321,25 @@ namespace Seino.DynamicBone
                     p.m_TransformPosition = p.m_Transform.position;
                     p.m_TransformLocalPosition = p.m_Transform.localPosition;
                     p.m_TransformLocalToWorldMatrix = p.m_Transform.localToWorldMatrix;
+                }
+            }
+
+            m_EffectiveColliders?.Clear();
+            if (m_Colliders is {Count: > 0})
+            {
+                foreach (var collider in m_Colliders)
+                {
+                    if (collider != null && collider.enabled)
+                    {
+                        m_EffectiveColliders ??= new List<DynamicBoneColliderBase>();
+                        m_EffectiveColliders.Add(collider);
+                    }
+
+                    if (collider.PrepareFrame != s_PrepareFrame)
+                    {
+                        collider.Prepare();
+                        collider.PrepareFrame = s_PrepareFrame;
+                    }
                 }
             }
         }
@@ -346,14 +388,22 @@ namespace Seino.DynamicBone
 
             float3 objectMove = loopIndex == 0 ? m_ObjectMove : float3.zero;
 
-            foreach (var p in pt.m_Particles)
+            for (int i = 0; i <  pt.m_Particles.Count; i++)
             {
+                var p = pt.m_Particles[i];
                 if (p.m_ParentIndex >= 0)
                 {
                     float3 v = p.m_Position - p.m_PrevPosition;
                     float3 rmove = objectMove * p.m_Inert;
                     p.m_PrevPosition = p.m_Position + rmove;
-                    p.m_Position += v * (1 - p.m_Damping) + force + rmove;
+                    float damping = p.m_Damping;
+                    if (p.m_IsCollide)
+                    {
+                        damping = Mathf.Clamp01(damping + p.m_Friction);
+                        p.m_IsCollide = false;
+                    }
+                    
+                    p.m_Position += v * (1 - damping) + force + rmove;
                 }
                 else
                 {
@@ -373,7 +423,7 @@ namespace Seino.DynamicBone
 
         private void UpdateParticles2(ParticleTree pt, float timeVar)
         {
-            for (var i = 1; i < pt.m_Particles.Count ; ++i)
+            for (var i = 1; i < pt.m_Particles.Count ; i++)
             {
                 var p = pt.m_Particles[i];
                 var p0 = pt.m_Particles[p.m_ParentIndex];
@@ -397,6 +447,15 @@ namespace Seino.DynamicBone
                         {
                             p.m_Position += d * ((len - maxLen) / len);
                         }
+                    }
+                }
+
+                if (m_EffectiveColliders?.Count > 0)
+                {
+                    float radius = p.m_Radius * m_ObjectScale;
+                    for (int j = 0; j < m_EffectiveColliders.Count; j++)
+                    {
+                        p.m_IsCollide |= m_EffectiveColliders[j].Collide(ref p.m_Position, radius);
                     }
                 }
 
@@ -432,7 +491,7 @@ namespace Seino.DynamicBone
 
         private void ApplyParticles(ParticleTree pt)
         {
-            for(int i = 1; i < pt.m_Particles.Count; ++i)
+            for(int i = 1; i < pt.m_Particles.Count; i++)
             {
                 var p = pt.m_Particles[i];
                 var p0 = pt.m_Particles[p.m_ParentIndex];
@@ -451,5 +510,32 @@ namespace Seino.DynamicBone
         }
 
         #endregion
+
+#if UNITY_EDITOR
+        private void OnDrawGizmosSelected()
+        {
+            if (!Application.isPlaying && transform.hasChanged)
+            {
+                InitTransforms();
+                SetupParticles();
+                UpdateParameters();
+            }
+            
+            Gizmos.color = Color.cyan;
+            foreach (var pt in m_ParticleTrees)
+            {
+                foreach (var p in pt.m_Particles)
+                {
+                    //质点半径
+                    Gizmos.DrawWireSphere(p.m_Position, p.m_Radius);
+                    if (p.m_ParentIndex >= 0)
+                    {
+                        var p0 = pt.m_Particles[p.m_ParentIndex];
+                        Gizmos.DrawLine(p0.m_Position, p.m_Position);
+                    }
+                }
+            }
+        }
+#endif
     }
 }
