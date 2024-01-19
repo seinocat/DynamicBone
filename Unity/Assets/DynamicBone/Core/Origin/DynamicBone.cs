@@ -96,7 +96,7 @@ namespace Seino.DynamicBone
         public class Particle
         {
             public Transform m_Transform;
-            public int m_ParentIndex;
+            public int m_ParentIndex; //父节点索引
             public int m_ChildCount;
             public float m_Damping;
             public float m_Elasticity;
