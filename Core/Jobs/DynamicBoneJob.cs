@@ -1,11 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace DynamicBone.Core.Jobs
+namespace Seino.DynamicBone
 {
     public struct HeadInfo
     {

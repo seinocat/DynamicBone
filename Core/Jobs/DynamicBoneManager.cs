@@ -1,8 +1,9 @@
-﻿using UnityEngine;
+﻿using Seino.Utils.Singleton;
+using UnityEngine;
 
-namespace DynamicBone.Core.Jobs
+namespace Seino.DynamicBone
 {
-    public class DynamicBoneManager : MonoBehaviour
+    public class DynamicBoneManager : MonoSingleton<DynamicBoneManager>
     {
         public static int MAX_PARTICLE_COUNT = 20; 
     }
