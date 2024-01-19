@@ -413,8 +413,7 @@ namespace Seino.DynamicBone
         private void UpdateParticles1(ParticleTree pt, float timeVar, int loopIndex)
         {
             float3 force = m_Gravity;
-            float3 fdir = math.normalize(m_Gravity);
-            if (math.all(math.isnan(fdir))) fdir = float3.zero;
+            float3 fdir = math.normalizesafe(m_Gravity);
             float3 pf = fdir * math.max(math.dot(pt.m_RestGravity, fdir), 0);
             force -= pf;
             force = (force + m_Force) * (m_ObjectScale * timeVar);
