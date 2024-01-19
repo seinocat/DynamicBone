@@ -1,5 +1,12 @@
 {
   "dependencies": {
+    "com.seinocat.utils": {
+      "version": "https://github.com/seinocat/SeinoUtils.git#0.0.7",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "5dab59fa5244cbbb8f012cd3845b0ac89c8700a3"
+    },
     "com.unity.burst": {
       "version": "1.8.8",
       "depth": 0,

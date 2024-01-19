@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.seinocat.utils": "https://github.com/seinocat/SeinoUtils.git#0.0.7",
     "com.unity.burst": "1.8.8",
     "com.unity.collab-proxy": "2.0.5",
     "com.unity.collections": "2.1.4",
