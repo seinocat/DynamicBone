@@ -12,10 +12,12 @@ namespace Seino.DynamicBone
         public float m_UpdateRate = 60;
         
         [LabelText("重力")]
-        public float3 m_Gravity = new(0, -0.002f, 0);
+        public float3 m_Gravity = float3.zero;
 
         [LabelText("外力")] 
         public float3 m_Force;
+        [LabelText("受力曲线")]
+        public AnimationCurve m_ForceCurve;
         
         [Range(0, 1)]
         [LabelText("权重")]
@@ -47,7 +49,7 @@ namespace Seino.DynamicBone
         public float m_Stiffness = 0.1f;
         [LabelText("刚性曲线")]
         public AnimationCurve m_StiffnessCurve;
-        
+
         [Space]
         [Range(0, 1)]
         [LabelText("摩擦力")]
@@ -96,24 +98,25 @@ namespace Seino.DynamicBone
         public class Particle
         {
             public Transform m_Transform;
-            public int m_ParentIndex; //父节点索引
-            public int m_ChildCount;
-            public float m_Damping;
-            public float m_Elasticity;
-            public float m_Stiffness;
-            public float m_Inert;
-            public float m_Friction;
-            public float m_Radius;
-            public float m_BoneLength;
+            public int m_ParentIndex; //父质点索引
+            public int m_ChildCount; //子质点数量
+            public float m_Damping; //阻尼系数
+            public float m_Elasticity; //弹性系数
+            public float m_Stiffness; //刚性系数
+            public float m_Inert; //惯性系数
+            public float m_Friction; //摩擦力
+            public float m_Radius; //质点半径
+            public float m_BoneLength; //骨骼长度
+            public float m_Force;
             public bool m_IsCollide;
 
-            public float3 m_Position;
-            public float3 m_PrevPosition;
-            public float3 m_InitLocalPosition;
-            public quaternion m_InitLocalRotation;
+            public float3 m_Position; //实际坐标
+            public float3 m_PrevPosition; //前一帧坐标
+            public float3 m_InitLocalPosition; //初始本地坐标
+            public quaternion m_InitLocalRotation; //初始本地旋转
 
-            public float3 m_TransformPosition;
-            public float3 m_TransformLocalPosition;
+            public float3 m_TransformPosition; //理想世界坐标
+            public float3 m_TransformLocalPosition; //理想本地坐标
             public float4x4 m_TransformLocalToWorldMatrix;
         }
         
@@ -225,7 +228,7 @@ namespace Seino.DynamicBone
             UpdateParameters();
         }
 
-        private void UpdateParameters()
+        public void UpdateParameters()
         {
             SetWeight(m_BlendWeight);
 
@@ -247,6 +250,7 @@ namespace Seino.DynamicBone
                 p.m_Inert =  Mathf.Clamp01(this.m_Inert);
                 p.m_Friction = Mathf.Clamp01(this.m_Friction);
                 p.m_Radius = Mathf.Abs(this.m_Radius);
+                p.m_Force = 1;
                 
                 if (pt.m_BoneTotalLength > 0)
                 {
@@ -263,6 +267,8 @@ namespace Seino.DynamicBone
                         p.m_Friction *= m_FrictionCurve.Evaluate(samplePos);
                     if (m_RadiusCurve != null && m_RadiusCurve.keys.Length > 0)
                         p.m_Radius *= m_RadiusCurve.Evaluate(samplePos);
+                    if (m_ForceCurve != null && m_ForceCurve.keys.Length > 0)
+                        p.m_Force *= m_ForceCurve.Evaluate(samplePos);
                 }
                 
                 p.m_Damping = Mathf.Clamp01(p.m_Damping);
@@ -416,13 +422,14 @@ namespace Seino.DynamicBone
             float3 fdir = math.normalizesafe(m_Gravity);
             float3 pf = fdir * math.max(math.dot(pt.m_RestGravity, fdir), 0);
             force -= pf;
-            force = (force + m_Force) * (m_ObjectScale * timeVar);
+            float time = m_ObjectScale * timeVar;
 
             float3 objectMove = loopIndex == 0 ? m_ObjectMove : float3.zero;
 
             for (int i = 0; i <  pt.m_Particles.Count; i++)
             {
                 var p = pt.m_Particles[i];
+                float3 pforce = (force + p.m_Force * m_Force) * time;
                 if (p.m_ParentIndex >= 0)
                 {
                     float3 v = p.m_Position - p.m_PrevPosition;
@@ -435,7 +442,7 @@ namespace Seino.DynamicBone
                         p.m_IsCollide = false;
                     }
                     
-                    p.m_Position += v * (1 - damping) + force + rmove;
+                    p.m_Position += v * (1 - damping) + pforce + rmove;
                 }
                 else
                 {

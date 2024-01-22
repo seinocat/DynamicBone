@@ -33,9 +33,7 @@ namespace Seino.DynamicBone
             float dist2 = math.lengthsq(dir);
             if (dist2 > 0 && dist2 < r * r)
             {
-                dir = math.normalize(dir);
-                if (math.any(math.isnan(dir)))
-                    dir = float3.zero;
+                dir = math.normalizesafe(dir);
                 particlePos = centerPos + dir * r;
                 return true;
             }
