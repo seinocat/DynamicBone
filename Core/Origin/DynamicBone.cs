@@ -26,6 +26,9 @@ namespace Seino.DynamicBone
         [LabelText("根节点")]
         public List<Transform> m_Roots;
 
+        [LabelText("结束节点")]
+        public List<Transform> EndRoot;
+        
         [LabelText("碰撞")] 
         public List<DynamicBoneColliderBase> m_Colliders;
 
@@ -216,7 +219,7 @@ namespace Seino.DynamicBone
             int index = pt.m_Particles.Count;
             pt.m_Particles.Add(p);
 
-            if (b != null)
+            if (b != null && !EndRoot.Contains(b))
             {
                 for (int i = 0; i < b.childCount; i++)
                 {
@@ -441,7 +444,12 @@ namespace Seino.DynamicBone
                         damping = Mathf.Clamp01(damping + p.m_Friction);
                         p.m_IsCollide = false;
                     }
-                    
+                    // 韦尔莱积分应用
+                    // 公式：x(t + △t) = x(t) + x(t) - x(x - △t) + a(t) * △t * △t / 2
+                    // f = ma,设 m=1 则 a=f，即不考虑物体质量对运动的影响
+                    // 余项忽略，即x(t + △t) = x(t) + v + f
+                    // v即当前帧与上一帧的位置差值，f为总合力（重力+外力）
+                    // 根据v,阻尼,合力和惯性(rmove)计算实际位置
                     p.m_Position += v * (1 - damping) + pforce + rmove;
                 }
                 else
