@@ -27,7 +27,7 @@ namespace Seino.DynamicBone
         public List<Transform> m_Roots;
 
         [LabelText("结束节点")]
-        public List<Transform> EndRoot;
+        public List<Transform> m_EndRoot;
         
         [LabelText("碰撞")] 
         public List<DynamicBoneColliderBase> m_Colliders;
@@ -219,7 +219,7 @@ namespace Seino.DynamicBone
             int index = pt.m_Particles.Count;
             pt.m_Particles.Add(p);
 
-            if (b != null && !EndRoot.Contains(b))
+            if (b != null && !m_EndRoot.Contains(b))
             {
                 for (int i = 0; i < b.childCount; i++)
                 {

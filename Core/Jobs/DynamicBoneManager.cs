@@ -49,8 +49,9 @@ namespace Seino.DynamicBone
             JobHandle dependency = new PrepareParticleJob
             {
                 HeadArray = m_HeadInfos,
-                ParticleInfos = m_ParticleInfos
-            }.Schedule(jobBoneCount, MAX_PARTICLE_COUNT, BoneSetupJob);
+                ParticleInfos = m_ParticleInfos,
+                HeadCount = jobBoneCount
+            }.Schedule(BoneSetupJob);
 
             dependency = new UpdateParticle1Job
             {
@@ -106,44 +107,47 @@ namespace Seino.DynamicBone
         }
 
         [BurstCompile]
-        private struct PrepareParticleJob : IJobParallelFor
+        private struct PrepareParticleJob : IJob
         {
-            [ReadOnly]
             public NativeArray<HeadInfo> HeadArray;
             public NativeArray<ParticleInfo> ParticleInfos;
+            public int HeadCount;
 
-            public void Execute(int index)
+            public void Execute()
             {
-                HeadInfo info = HeadArray[index];
-                info.m_ObjectMove = info.m_ObjectPosition - info.m_ObjectPrevPosition;
-                info.m_ObjectPrevPosition = info.m_ObjectPosition;
-
-                float3 objectPosition = info.m_ObjectPosition;
-                quaternion objectRotation = info.m_ObjectRotation;
-
-                for (int j = 0; j < info.m_ParticleCount; j++)
+                for (int i = 0; i < HeadCount; i++)
                 {
-                    int pIdx = info.m_Offset + j;
-                    var p = ParticleInfos[pIdx];
-                    float3 localPosition = p.m_LocalPosition * p.m_ParentScale;
-                    quaternion localRotation = p.m_LocalRotation;
-                    float3 worldPosition = objectPosition + math.mul(objectRotation, localPosition);
-                    quaternion worldRotation = math.mul(objectRotation, localRotation);
-                        
-                    objectPosition = p.m_Position = worldPosition;
-                    objectRotation = p.m_Rotation = worldRotation;
+                    HeadInfo info = HeadArray[i];
+                    info.m_ObjectMove = info.m_ObjectPosition - info.m_ObjectPrevPosition;
+                    info.m_ObjectPrevPosition = info.m_ObjectPosition;
 
-                    ParticleInfos[pIdx] = p;
+                    float3 objectPosition = info.m_ObjectPosition;
+                    quaternion objectRotation = info.m_ObjectRotation;
+
+                    for (int j = 0; j < info.m_ParticleCount; j++)
+                    {
+                        int pIdx = info.m_Offset + j;
+                        var p = ParticleInfos[pIdx];
+                        float3 localPosition = p.m_LocalPosition * p.m_ParentScale;
+                        quaternion localRotation = p.m_LocalRotation;
+                        float3 worldPosition = objectPosition + math.mul(objectRotation, localPosition);
+                        quaternion worldRotation = math.mul(objectRotation, localRotation);
+                        
+                        objectPosition = p.m_Position = worldPosition;
+                        objectRotation = p.m_Rotation = worldRotation;
+
+                        ParticleInfos[pIdx] = p;
+                    }
+                    
+                    float3 force = info.m_Gravity;
+                    float3 fdir = math.normalizesafe(force);
+                    float3 pf = fdir * math.max(math.dot(force, fdir), 0);
+                    force -= pf;
+                    force = (force + info.m_Force) * info.m_ObjectScale;
+                    info.m_FinalForce = force;
+                    
+                    HeadArray[i] = info;
                 }
-                    
-                float3 force = info.m_Gravity;
-                float3 fdir = math.normalizesafe(force);
-                float3 pf = fdir * math.max(math.dot(force, fdir), 0);
-                force -= pf;
-                force = (force + info.m_Force) * info.m_ObjectScale;
-                info.m_FinalForce = force;
-                    
-                HeadArray[index] = info;
             }
         }
         
