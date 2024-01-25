@@ -4,7 +4,8 @@
     "references": [
         "Seino.Utils.Runtime",
         "Unity.Mathematics",
-        "Unity.Burst"
+        "Unity.Burst",
+        "Unity.Collections"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -128,6 +128,7 @@ namespace Seino.DynamicBone
             ParticleTransforms = new Transform[DynamicBoneManager.MAX_PARTICLE_COUNT];
 
             SetupParticles();
+            DynamicBoneManager.Instance.AddBone(this);
             m_Inited = true;
         }
         
