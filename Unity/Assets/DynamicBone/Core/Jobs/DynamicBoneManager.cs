@@ -1,4 +1,6 @@
-﻿using Seino.Utils.Singleton;
+﻿using System;
+using System.Collections.Generic;
+using Seino.Utils.Singleton;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
@@ -13,7 +15,82 @@ namespace Seino.DynamicBone
         public const int MAX_PARTICLE_COUNT = 20;
 
         private float m_UpdateRate = 60f;
-        
+
+        private List<DynamicBoneJob> m_JobBones;
+        private NativeList<HeadInfo> m_HeadInfos;
+        private NativeList<ParticleInfo> m_ParticleInfos;
+        private TransformAccessArray m_HeadTransArray;
+        private TransformAccessArray m_ParticleTransArray;
+
+        private void Awake()
+        {
+            m_JobBones = new List<DynamicBoneJob>();
+            m_HeadInfos = new NativeList<HeadInfo>(200, Allocator.Persistent);
+            m_HeadTransArray = new TransformAccessArray(200, 64);
+            m_ParticleInfos = new NativeList<ParticleInfo>(Allocator.Persistent);
+            m_ParticleTransArray = new TransformAccessArray(200 * MAX_PARTICLE_COUNT, 64);
+        }
+
+        private void LateUpdate()
+        {
+            ExecuteJobs();
+        }
+
+        private void ExecuteJobs()
+        {
+            int jobBoneCount = m_HeadInfos.Length;
+            int particleMaxCount = jobBoneCount * MAX_PARTICLE_COUNT;
+
+            JobHandle BoneSetupJob = new BoneSetupJob
+            {
+                HeadArray = m_HeadInfos
+            }.Schedule(m_HeadTransArray);
+
+            JobHandle dependency = new PrepareParticleJob
+            {
+                HeadArray = m_HeadInfos,
+                ParticleInfos = m_ParticleInfos
+            }.Schedule(jobBoneCount, MAX_PARTICLE_COUNT, BoneSetupJob);
+
+            dependency = new UpdateParticle1Job
+            {
+                HeadArray = m_HeadInfos,
+                ParticleInfos = m_ParticleInfos
+            }.Schedule(particleMaxCount, MAX_PARTICLE_COUNT, dependency);
+            
+            dependency = new UpdateParticle2Job
+            {
+                HeadArray = m_HeadInfos,
+                ParticleInfos = m_ParticleInfos
+            }.Schedule(particleMaxCount, MAX_PARTICLE_COUNT, dependency);
+            
+            dependency = new ApplyTransformJob
+            {
+                ParticleInfos = m_ParticleInfos
+            }.Schedule(m_ParticleTransArray, dependency);
+            
+            dependency.Complete();
+        }
+
+        public void AddBone(DynamicBoneJob bone)
+        {
+            if (m_JobBones.Contains(bone))
+                return;
+            m_JobBones.Add(bone);
+            bone.HeadInfo.m_Offset = m_ParticleInfos.Length;
+            bone.HeadInfo.m_Index = m_HeadInfos.Length;
+            
+            m_HeadInfos.Add(bone.HeadInfo);
+            m_ParticleInfos.AddRange(bone.ParticleInfos);
+            m_HeadTransArray.Add(bone.transform);
+            for (int i = 0; i < MAX_PARTICLE_COUNT; i++)
+            {
+                m_ParticleTransArray.Add(bone.ParticleTransforms[i]);
+            }
+        }
+
+        #region Job
+
         [BurstCompile]
         private struct BoneSetupJob : IJobParallelForTransform
         {
@@ -182,5 +259,9 @@ namespace Seino.DynamicBone
                 ParticleInfos[index] = p;
             }
         }
+
+        #endregion
+        
+        
     }
 }
