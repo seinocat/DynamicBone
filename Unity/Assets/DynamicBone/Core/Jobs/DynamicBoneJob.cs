@@ -52,7 +52,6 @@ namespace Seino.DynamicBone
     public class DynamicBoneJob : MonoBehaviour
     {
         [Title("全局设置")]
-
         [LabelText("重力")]
         public float3 m_Gravity = float3.zero;
 
@@ -65,6 +64,9 @@ namespace Seino.DynamicBone
 
         [LabelText("根节点")]
         public Transform m_Root;
+
+        [LabelText("结束节点")]
+        public Transform m_EndRoot;
 
         [LabelText("碰撞")] 
         public List<DynamicBoneColliderBase> m_Colliders;
@@ -170,8 +172,10 @@ namespace Seino.DynamicBone
         private void AppendParticles(Transform b, int parentIndex, float boneLength)
         {
             var p = new ParticleInfo();
-            p.m_Index = m_ParticleCount++;
+            p.m_Index = m_ParticleCount;
             p.m_ParentIndex = parentIndex;
+
+            m_ParticleCount++;
             
             if (b != null)
             {
@@ -193,7 +197,7 @@ namespace Seino.DynamicBone
             ParticleInfos[index] = p;
             ParticleTransforms[index] = b;
 
-            if (b != null)
+            if (b != null && m_EndRoot != b)
             {
                 for (int i = 0; i < b.childCount; i++)
                 {
