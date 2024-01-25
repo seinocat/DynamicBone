@@ -41,17 +41,17 @@ namespace Seino.DynamicBone
             int jobBoneCount = m_HeadInfos.Length;
             int particleMaxCount = jobBoneCount * MAX_PARTICLE_COUNT;
 
-            JobHandle BoneSetupJob = new BoneSetupJob
+            JobHandle dependency = new BoneSetupJob
             {
                 HeadArray = m_HeadInfos
             }.Schedule(m_HeadTransArray);
 
-            JobHandle dependency = new PrepareParticleJob
+            dependency = new PrepareParticleJob
             {
                 HeadArray = m_HeadInfos,
                 ParticleInfos = m_ParticleInfos,
                 HeadCount = jobBoneCount
-            }.Schedule(BoneSetupJob);
+            }.Schedule(dependency);
 
             dependency = new UpdateParticle1Job
             {
