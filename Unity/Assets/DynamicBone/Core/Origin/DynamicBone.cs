@@ -575,6 +575,7 @@ namespace Seino.DynamicBone
                 {
                     //质点半径
                     Gizmos.DrawWireSphere(p.m_Position, p.m_Radius);
+                    Gizmos.DrawSphere(p.m_Position, 0.02f);
                     if (p.m_ParentIndex >= 0)
                     {
                         var p0 = pt.m_Particles[p.m_ParentIndex];
