@@ -9,7 +9,7 @@ namespace Seino.DynamicBone
         Inside
     }
     
-    public class DynamicBoneColliderBase : MonoBehaviour
+    public abstract class DynamicBoneColliderBase : MonoBehaviour
     {
         public float3 m_Center = float3.zero;
 
