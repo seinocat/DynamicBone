@@ -8,6 +8,7 @@ namespace Seino.DynamicBone
         public int Row = 20;
         public int Col = 20;
         public GameObject Prefab;
+        public GameObject Root;
 
         private void Start()
         {
@@ -16,6 +17,8 @@ namespace Seino.DynamicBone
                 for (int j = 0; j < Col; j++)
                 {
                     var go = Instantiate(Prefab, new Vector3(i, 0, j), Quaternion.identity);
+
+                    // go.transform.SetParent(Root.transform);
                     go.SetActive(true);
                 }
             }
