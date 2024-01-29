@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Seino.Utils.Singleton;
 using Unity.Burst;
 using Unity.Collections;
@@ -21,6 +20,8 @@ namespace Seino.DynamicBone
         private NativeList<ParticleInfo> m_ParticleInfos;
         private TransformAccessArray m_HeadTransArray;
         private TransformAccessArray m_ParticleTransArray;
+        private static float m_DeltaTime;
+        private JobHandle dependency;
 
         private void Awake()
         {
@@ -31,8 +32,18 @@ namespace Seino.DynamicBone
             m_ParticleTransArray = new TransformAccessArray(200 * MAX_PARTICLE_COUNT, 64);
         }
 
+        private void OnDestroy()
+        {
+            if (m_HeadInfos.IsCreated) m_HeadInfos.Dispose();
+            if (m_HeadTransArray.isCreated) m_HeadTransArray.Dispose();
+            if (m_ParticleInfos.IsCreated) m_ParticleInfos.Dispose();
+            if (m_ParticleTransArray.isCreated) m_ParticleTransArray.Dispose();
+        }
+
         private void LateUpdate()
         {
+            RemoveJobs();
+            dependency.Complete();
             ExecuteJobs();
         }
 
@@ -40,8 +51,8 @@ namespace Seino.DynamicBone
         {
             int jobBoneCount = m_HeadInfos.Length;
             int particleMaxCount = jobBoneCount * MAX_PARTICLE_COUNT;
-
-            JobHandle dependency = new BoneSetupJob
+            
+            dependency = new BoneSetupJob
             {
                 HeadArray = m_HeadInfos
             }.Schedule(m_HeadTransArray);
@@ -50,7 +61,8 @@ namespace Seino.DynamicBone
             {
                 HeadArray = m_HeadInfos,
                 ParticleInfos = m_ParticleInfos,
-                HeadCount = jobBoneCount
+                HeadCount = jobBoneCount,
+                DeltaTime = m_DeltaTime
             }.Schedule(dependency);
 
             dependency = new UpdateParticle1Job
@@ -69,8 +81,6 @@ namespace Seino.DynamicBone
             {
                 ParticleInfos = m_ParticleInfos
             }.Schedule(m_ParticleTransArray, dependency);
-            
-            dependency.Complete();
         }
 
         public void AddBone(DynamicBoneJob bone)
@@ -88,6 +98,17 @@ namespace Seino.DynamicBone
             {
                 m_ParticleTransArray.Add(bone.ParticleTransforms[i]);
             }
+        }
+
+        public void RemoveBone(DynamicBoneJob bone)
+        {
+            if (!m_JobBones.Contains(bone))
+                return;
+            
+        }
+
+        private void RemoveJobs()
+        {
         }
 
         #region Job
@@ -112,6 +133,7 @@ namespace Seino.DynamicBone
             public NativeArray<HeadInfo> HeadArray;
             public NativeArray<ParticleInfo> ParticleInfos;
             public int HeadCount;
+            public float DeltaTime;
 
             public void Execute()
             {
@@ -145,6 +167,7 @@ namespace Seino.DynamicBone
                     force -= pf;
                     force = (force + info.m_Force) * info.m_ObjectScale;
                     info.m_FinalForce = force;
+                    info.m_DeltaTime = DeltaTime;
                     
                     HeadArray[i] = info;
                 }
@@ -170,9 +193,9 @@ namespace Seino.DynamicBone
 
                 if (p.m_ParentIndex >= 0)
                 {
-                    float3 v = p.m_WorldPostion - p.m_PrevPosition;
+                    float3 v = p.m_WorldPosition - p.m_PrevPosition;
                     float3 rmove = info.m_ObjectMove * p.m_Inert;
-                    p.m_PrevPosition = p.m_WorldPostion + rmove;
+                    p.m_PrevPosition = p.m_WorldPosition + rmove;
                     float damping = p.m_Damping;
                     if (p.m_IsCollide)
                     {
@@ -184,8 +207,8 @@ namespace Seino.DynamicBone
                     
                 }else
                 {
-                    p.m_PrevPosition = p.m_WorldPostion;
-                    p.m_WorldPostion = p.m_Position;
+                    p.m_PrevPosition = p.m_WorldPosition;
+                    p.m_WorldPosition = p.m_Position;
                 }
 
                 ParticleInfos[pIdx] = p;
@@ -220,28 +243,28 @@ namespace Seino.DynamicBone
                 float stiffness = math.lerp(1.0f, p.m_Stiffness, info.m_Weight);
                 if (stiffness > 0 || p.m_Elasticity > 0)
                 {
-                    var matrix = float4x4.TRS(p0.m_WorldPostion, p0.m_Rotation, p.m_ParentScale);
+                    var matrix = float4x4.TRS(p0.m_WorldPosition, p0.m_Rotation, p.m_ParentScale);
                     float3 restPos = math.mul(matrix, new float4(p.m_LocalPosition, 1.0f)).xyz;
-                    float3 d = restPos - p.m_WorldPostion;
-                    p.m_WorldPostion += d * p.m_Elasticity;
+                    float3 d = restPos - p.m_WorldPosition;
+                    p.m_WorldPosition += d * (p.m_Elasticity * 1);
 
                     if (stiffness > 0)
                     {
-                        d = restPos - p.m_WorldPostion;
+                        d = restPos - p.m_WorldPosition;
                         float len = math.length(d);
                         float maxLen = restLen * (1 - stiffness) * 2;
                         if (len > maxLen)
                         {
-                            p.m_WorldPostion += d * ((len - maxLen) / len);
+                            p.m_WorldPosition += d * ((len - maxLen) / len);
                         }
                     }
                 }
                 
-                float3 dd = p0.m_WorldPostion - p.m_WorldPostion;
+                float3 dd = p0.m_WorldPosition - p.m_WorldPosition;
                 float leng = math.length(dd);
                 if (leng > 0)
                 {
-                    p.m_WorldPostion += dd * ((leng - restLen) / leng);
+                    p.m_WorldPosition += dd * ((leng - restLen) / leng);
                 }
 
                 ParticleInfos[pIdx] = p;
@@ -257,7 +280,7 @@ namespace Seino.DynamicBone
             {
                 var p = ParticleInfos[index];
 
-                p.m_Position = p.m_WorldPostion;
+                p.m_Position = p.m_WorldPosition;
                 transform.position = p.m_Position;
                 transform.rotation = p.m_Rotation;
                 ParticleInfos[index] = p;

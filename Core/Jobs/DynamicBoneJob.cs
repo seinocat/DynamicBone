@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -6,49 +7,6 @@ using UnityEngine;
 
 namespace Seino.DynamicBone
 {
-    public struct HeadInfo
-    {
-        public int m_Index;
-        public float3 m_ObjectMove;
-        public float3 m_ObjectPosition;
-        public float3 m_ObjectPrevPosition;
-        public quaternion m_ObjectRotation;
-        public float3 m_Gravity;
-        public float3 m_LocalGravity;
-        public float3 m_Force;
-        public float3 m_FinalForce;
-        public float m_ObjectScale;
-        public float m_Weight;
-        public int m_ParticleCount;
-        public int m_Offset;
-        public float4x4 m_RootWorldToLocalMatrix;
-    }
-        
-    public struct ParticleInfo
-    {
-        public int m_Index;
-        public int m_ParentIndex;
-        public float m_Damping;
-        public float m_Elasticity;
-        public float m_Stiffness;
-        public float m_Inert;
-        public float m_Friction;
-        public float m_Radius;
-        public float m_BoneLength;
-        public bool m_IsCollide;
-
-        public float3 m_Position;
-        public quaternion m_Rotation;
-        public float3 m_PrevPosition;
-        public float3 m_InitLocalPosition;
-        public quaternion m_InitLocalRotation;
-
-        public float3 m_WorldPostion;
-        public float3 m_LocalPosition;
-        public quaternion m_LocalRotation;
-        public float3 m_ParentScale;
-    }
-    
     public class DynamicBoneJob : MonoBehaviour
     {
         [Title("全局设置")]
@@ -120,7 +78,7 @@ namespace Seino.DynamicBone
         public NativeArray<ParticleInfo> ParticleInfos;
         public Transform[] ParticleTransforms;
         public HeadInfo HeadInfo;
-
+        
         private void Awake()
         {
             if (m_Root == null)
@@ -179,7 +137,7 @@ namespace Seino.DynamicBone
             
             if (b != null)
             {
-                p.m_WorldPostion = p.m_Position = p.m_PrevPosition = b.position;
+                p.m_WorldPosition = p.m_Position = p.m_PrevPosition = b.position;
                 p.m_LocalPosition = p.m_InitLocalPosition = b.localPosition;
                 p.m_LocalRotation = p.m_InitLocalRotation = b.localRotation;
                 p.m_Rotation = b.rotation;
@@ -188,7 +146,7 @@ namespace Seino.DynamicBone
 
             if (parentIndex >= 0)
             {
-                boneLength += math.distance(ParticleTransforms[parentIndex].position, p.m_WorldPostion);
+                boneLength += math.distance(ParticleTransforms[parentIndex].position, p.m_WorldPosition);
                 p.m_BoneLength = boneLength;
                 m_BoneTotalLength = math.max(m_BoneTotalLength, boneLength);
             }
