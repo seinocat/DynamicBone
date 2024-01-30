@@ -19,6 +19,8 @@ namespace Seino.DynamicBone
         public int m_ParticleCount;
         public int m_Offset;
         public float4x4 m_RootWorldToLocalMatrix;
+
+        public bool IsNull;
     }
         
     public struct ParticleInfo

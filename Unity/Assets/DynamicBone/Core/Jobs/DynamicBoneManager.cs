@@ -43,8 +43,8 @@ namespace Seino.DynamicBone
 
         private void LateUpdate()
         {
-            RemoveJobs();
             dependency.Complete();
+            RemoveJobs();
             ExecuteJobs();
         }
 
@@ -53,24 +53,29 @@ namespace Seino.DynamicBone
             int jobBoneCount = m_HeadInfos.Length;
             int particleMaxCount = jobBoneCount * MAX_PARTICLE_COUNT;
             
-            dependency = new BoneSetupJob
+            var setupJob = new BoneSetupJob
             {
                 HeadArray = m_HeadInfos
             }.Schedule(m_HeadTransArray);
+            
+            var headJob = new PrepareHeadJob()
+            {
+                HeadArray = m_HeadInfos,
+                DeltaTime = m_DeltaTime
+            }.Schedule(jobBoneCount, MAX_PARTICLE_COUNT, setupJob);
 
-            dependency = new PrepareParticleJob
+            var particleJob = new PrepareParticleJob
             {
                 HeadArray = m_HeadInfos,
                 ParticleInfos = m_ParticleInfos,
-                HeadCount = jobBoneCount,
-                DeltaTime = m_DeltaTime
-            }.Schedule(dependency);
+            }.Schedule(particleMaxCount, MAX_PARTICLE_COUNT, headJob);
+            
 
             dependency = new UpdateParticle1Job
             {
                 HeadArray = m_HeadInfos,
                 ParticleInfos = m_ParticleInfos
-            }.Schedule(particleMaxCount, MAX_PARTICLE_COUNT, dependency);
+            }.Schedule(particleMaxCount, MAX_PARTICLE_COUNT, particleJob);
             
             dependency = new UpdateParticle2Job
             {
@@ -115,6 +120,7 @@ namespace Seino.DynamicBone
 
         private void RemoveJobs()
         {
+            
         }
 
         #region Job
@@ -132,51 +138,70 @@ namespace Seino.DynamicBone
                 HeadArray[index] = info;
             }
         }
+        
+        [BurstCompile]
+        private struct PrepareParticleJob : IJobParallelFor
+        {
+            public NativeArray<ParticleInfo> ParticleInfos;
+            [ReadOnly]
+            public NativeArray<HeadInfo> HeadArray;
+            
+            public void Execute(int index)
+            {
+                //计算质点的世界坐标
+                int headIndex = index / MAX_PARTICLE_COUNT;
+                var info = HeadArray[headIndex];
+                var p = ParticleInfos[index];
+                
+                float3 objectPosition;
+                quaternion objectRotation;
+
+                if (index % MAX_PARTICLE_COUNT == 0)
+                {
+                    objectPosition = info.m_ObjectPosition;
+                    objectRotation = info.m_ObjectRotation;
+                }
+                else
+                {
+                    var p0 = ParticleInfos[info.m_Offset + p.m_ParentIndex];
+                    objectPosition = p0.m_Position;
+                    objectRotation = p0.m_Rotation;
+                }
+                
+                float3 localPosition = p.m_LocalPosition * p.m_ParentScale;
+                quaternion localRotation = p.m_LocalRotation;
+                float3 worldPosition = objectPosition + math.mul(objectRotation, localPosition);
+                quaternion worldRotation = math.mul(objectRotation, localRotation);
+                        
+                p.m_Position = worldPosition;
+                p.m_Rotation = worldRotation;
+                    
+                ParticleInfos[index] = p;
+            }
+        }
 
         [BurstCompile]
-        private struct PrepareParticleJob : IJob
+        private struct PrepareHeadJob : IJobParallelFor
         {
             public NativeArray<HeadInfo> HeadArray;
-            public NativeArray<ParticleInfo> ParticleInfos;
-            public int HeadCount;
             public float DeltaTime;
 
-            public void Execute()
+            public void Execute(int index)
             {
-                for (int i = 0; i < HeadCount; i++)
-                {
-                    HeadInfo info = HeadArray[i];
-                    info.m_ObjectMove = info.m_ObjectPosition - info.m_ObjectPrevPosition;
-                    info.m_ObjectPrevPosition = info.m_ObjectPosition;
-
-                    float3 objectPosition = info.m_ObjectPosition;
-                    quaternion objectRotation = info.m_ObjectRotation;
-
-                    for (int j = 0; j < info.m_ParticleCount; j++)
-                    {
-                        int pIdx = info.m_Offset + j;
-                        var p = ParticleInfos[pIdx];
-                        float3 localPosition = p.m_LocalPosition * p.m_ParentScale;
-                        quaternion localRotation = p.m_LocalRotation;
-                        float3 worldPosition = objectPosition + math.mul(objectRotation, localPosition);
-                        quaternion worldRotation = math.mul(objectRotation, localRotation);
-                        
-                        objectPosition = p.m_Position = worldPosition;
-                        objectRotation = p.m_Rotation = worldRotation;
-
-                        ParticleInfos[pIdx] = p;
-                    }
+                //计算惯性位移和合力部分
+                HeadInfo info = HeadArray[index];
+                info.m_ObjectMove = info.m_ObjectPosition - info.m_ObjectPrevPosition;
+                info.m_ObjectPrevPosition = info.m_ObjectPosition;
                     
-                    float3 force = info.m_Gravity;
-                    float3 fdir = math.normalizesafe(force);
-                    float3 pf = fdir * math.max(math.dot(force, fdir), 0);
-                    force -= pf;
-                    force = (force + info.m_Force) * info.m_ObjectScale;
-                    info.m_FinalForce = force;
-                    info.m_DeltaTime = DeltaTime;
+                float3 force = info.m_Gravity;
+                float3 fdir = math.normalizesafe(force);
+                float3 pf = fdir * math.max(math.dot(force, fdir), 0);
+                force -= pf;
+                force = (force + info.m_Force) * info.m_ObjectScale;
+                info.m_FinalForce = force;
+                info.m_DeltaTime = DeltaTime;
                     
-                    HeadArray[i] = info;
-                }
+                HeadArray[index] = info;
             }
         }
         
