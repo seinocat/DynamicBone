@@ -84,7 +84,12 @@ namespace Seino.DynamicBone
             DynamicBoneManager.Instance.AddBone(this);
             m_Inited = true;
         }
-        
+
+        private void OnDestroy()
+        {
+            DynamicBoneManager.Instance.RemoveBone(this);
+        }
+
         private void OnValidate()
         {
             if (!m_Inited)
