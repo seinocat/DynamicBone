@@ -21,14 +21,11 @@ namespace Seino.DynamicBone
         public float m_BlendWeight = 1.0f;
 
         [LabelText("根节点")]
-        public Transform m_Root;
-
+        public List<Transform> m_Roots;
+        
         [LabelText("结束节点")]
-        public Transform m_EndRoot;
-
-        [LabelText("碰撞")] 
-        public List<DynamicBoneColliderBase> m_Colliders;
-
+        public List<Transform> m_EndRoots;
+        
         [Title("参数")]
         [Range(0, 1)]
         [LabelText("阻尼")]
@@ -75,18 +72,14 @@ namespace Seino.DynamicBone
         private int m_ParticleCount;
         private bool m_Inited;
 
-        public NativeArray<ParticleInfo> ParticleInfos;
-        public Transform[] ParticleTransforms;
-        public HeadInfo HeadInfo;
-        
+        public List<HeadInfo> HeadInfos;
+        public List<NativeArray<ParticleInfo>> ParticleInfos;
+        public List<Transform[]> ParticleTransforms;
+
         private void Awake()
         {
-            if (m_Root == null)
+            if (m_Roots == null)
                 return;
-
-            ParticleInfos = new NativeArray<ParticleInfo>(DynamicBoneManager.MAX_PARTICLE_COUNT, Allocator.Persistent);
-            ParticleTransforms = new Transform[DynamicBoneManager.MAX_PARTICLE_COUNT];
-
             SetupParticles();
             DynamicBoneManager.Instance.AddBone(this);
             m_Inited = true;
@@ -94,6 +87,9 @@ namespace Seino.DynamicBone
         
         private void OnValidate()
         {
+            if (!m_Inited)
+                return;
+            
             m_Damping = Mathf.Clamp01(m_Damping);
             m_Elasticity =  Mathf.Clamp01(m_Elasticity);
             m_Stiffness =  Mathf.Clamp01(m_Stiffness);
@@ -110,24 +106,45 @@ namespace Seino.DynamicBone
         
         private void SetupParticles()
         {
-            m_ParticleCount = 0;
-            m_BoneTotalLength = 0;
-            
-            HeadInfo = new HeadInfo();
-            HeadInfo.m_ObjectScale = math.abs(transform.lossyScale.x);
-            HeadInfo.m_ObjectPrevPosition = transform.position;
-            HeadInfo.m_ObjectMove = float3.zero;
-            HeadInfo.m_Weight = m_Weight;
-            HeadInfo.m_Force = m_Force;
-            HeadInfo.m_ParticleCount = 0;
-            HeadInfo.m_RootWorldToLocalMatrix = m_Root.worldToLocalMatrix;
-
-            AppendParticles(m_Root, -1, 0);
+            HeadInfos = new List<HeadInfo>();
+            ParticleInfos = new List<NativeArray<ParticleInfo>>();
+            ParticleTransforms = new List<Transform[]>();
+            AppendParticles();
             UpdateParameters();
-            HeadInfo.m_ParticleCount = m_ParticleCount;
+        }
+
+        private void AppendParticles()
+        {
+            for (int i = 0; i < m_Roots.Count; i++)
+            {
+                if (m_Roots[i] == null)
+                    continue;
+                var root = m_Roots[i];
+                m_ParticleCount = 0;
+                m_BoneTotalLength = 0;
+            
+                HeadInfo headInfo = new HeadInfo();
+                headInfo.m_ObjectScale = math.abs(transform.lossyScale.x);
+                headInfo.m_ObjectPrevPosition = transform.position;
+                headInfo.m_ObjectMove = float3.zero;
+                headInfo.m_Weight = m_Weight;
+                headInfo.m_Force = m_Force;
+                headInfo.m_ParticleCount = 0;
+                headInfo.m_RootWorldToLocalMatrix = root.worldToLocalMatrix;
+                
+                NativeArray<ParticleInfo> particels = new NativeArray<ParticleInfo>(DynamicBoneManager.MAX_PARTICLE_COUNT, Allocator.Persistent);
+                Transform[] transforms = new Transform[DynamicBoneManager.MAX_PARTICLE_COUNT];
+                AppendParticle(ref particels, ref transforms, root, -1, 0);
+                
+                headInfo.m_ParticleCount = m_ParticleCount;
+                
+                ParticleInfos.Add(particels);
+                ParticleTransforms.Add(transforms);
+                HeadInfos.Add(headInfo);
+            }
         }
         
-        private void AppendParticles(Transform b, int parentIndex, float boneLength)
+        private void AppendParticle(ref NativeArray<ParticleInfo> particles, ref Transform[] transforms, Transform b, int parentIndex, float boneLength)
         {
             var p = new ParticleInfo();
             p.m_Index = m_ParticleCount;
@@ -146,21 +163,21 @@ namespace Seino.DynamicBone
 
             if (parentIndex >= 0)
             {
-                boneLength += math.distance(ParticleTransforms[parentIndex].position, p.m_WorldPosition);
+                boneLength += math.distance(transforms[parentIndex].position, p.m_WorldPosition);
                 p.m_BoneLength = boneLength;
                 m_BoneTotalLength = math.max(m_BoneTotalLength, boneLength);
             }
 
             int index = p.m_Index;
-            ParticleInfos[index] = p;
-            ParticleTransforms[index] = b;
+            particles[index] = p;
+            transforms[index] = b;
 
-            if (b != null && m_EndRoot != b)
+            if (b != null && !m_EndRoots.Contains(b))
             {
                 for (int i = 0; i < b.childCount; i++)
                 {
                     var child = b.GetChild(i);
-                    AppendParticles(child, index, boneLength);
+                    AppendParticle(ref particles, ref transforms, child, index, boneLength);
                 }
             }
         }
@@ -168,54 +185,62 @@ namespace Seino.DynamicBone
         
         private void UpdateParameters()
         {
-            HeadInfo.m_LocalGravity = math.normalize(math.mul(HeadInfo.m_RootWorldToLocalMatrix, new float4(m_Gravity, 0.0f)).xyz) * math.length(m_Gravity);
-
-            for (int i = 0; i < m_ParticleCount; i++)
+            for (int i = 0; i < HeadInfos.Count; i++)
             {
-                var p = ParticleInfos[i];
-                p.m_Damping = Mathf.Clamp01(this.m_Damping);
-                p.m_Elasticity =  Mathf.Clamp01(this.m_Elasticity);
-                p.m_Stiffness =  Mathf.Clamp01(this.m_Stiffness);
-                p.m_Inert =  Mathf.Clamp01(this.m_Inert);
-                p.m_Friction = Mathf.Clamp01(this.m_Friction);
-                p.m_Radius = Mathf.Abs(this.m_Radius);
-                
-                if (m_BoneTotalLength > 0)
+                var head = HeadInfos[i];
+                head.m_LocalGravity = math.normalize(math.mul(head.m_RootWorldToLocalMatrix, new float4(m_Gravity, 0.0f)).xyz) * math.length(m_Gravity);
+                var particleInfos = ParticleInfos[i];
+                for (int j = 0; j < head.m_ParticleCount; j++)
                 {
-                    float samplePos = p.m_BoneLength / m_BoneTotalLength;
-                    if (m_DampingCurve != null && m_DampingCurve.keys.Length > 0)
-                        p.m_Damping *= m_DampingCurve.Evaluate(samplePos);
-                    if (m_ElasticityCurve != null && m_ElasticityCurve.keys.Length > 0)
-                        p.m_Elasticity *= m_ElasticityCurve.Evaluate(samplePos);
-                    if (m_StiffnessCurve != null && m_StiffnessCurve.keys.Length > 0)
-                        p.m_Stiffness *= m_StiffnessCurve.Evaluate(samplePos);
-                    if (m_InertCurve != null && m_InertCurve.keys.Length > 0)
-                        p.m_Inert *= m_InertCurve.Evaluate(samplePos);
-                    if (m_FrictionCurve != null && m_FrictionCurve.keys.Length > 0)
-                        p.m_Friction *= m_FrictionCurve.Evaluate(samplePos);
-                    if (m_RadiusCurve != null && m_RadiusCurve.keys.Length > 0)
-                        p.m_Radius *= m_RadiusCurve.Evaluate(samplePos);
-                }
-                
-                p.m_Damping = Mathf.Clamp01(p.m_Damping);
-                p.m_Elasticity =  Mathf.Clamp01(p.m_Elasticity);
-                p.m_Stiffness =  Mathf.Clamp01(p.m_Stiffness);
-                p.m_Inert =  Mathf.Clamp01(p.m_Inert);
-                p.m_Friction = Mathf.Clamp01(p.m_Friction);
-                p.m_Radius = Mathf.Abs(p.m_Radius);
+                    var p = particleInfos[j];
+                    p.m_Damping = Mathf.Clamp01(this.m_Damping);
+                    p.m_Elasticity =  Mathf.Clamp01(this.m_Elasticity);
+                    p.m_Stiffness =  Mathf.Clamp01(this.m_Stiffness);
+                    p.m_Inert =  Mathf.Clamp01(this.m_Inert);
+                    p.m_Friction = Mathf.Clamp01(this.m_Friction);
+                    p.m_Radius = Mathf.Abs(this.m_Radius);
+                    
+                    if (m_BoneTotalLength > 0)
+                    {
+                        float samplePos = p.m_BoneLength / m_BoneTotalLength;
+                        if (m_DampingCurve != null && m_DampingCurve.keys.Length > 0)
+                            p.m_Damping *= m_DampingCurve.Evaluate(samplePos);
+                        if (m_ElasticityCurve != null && m_ElasticityCurve.keys.Length > 0)
+                            p.m_Elasticity *= m_ElasticityCurve.Evaluate(samplePos);
+                        if (m_StiffnessCurve != null && m_StiffnessCurve.keys.Length > 0)
+                            p.m_Stiffness *= m_StiffnessCurve.Evaluate(samplePos);
+                        if (m_InertCurve != null && m_InertCurve.keys.Length > 0)
+                            p.m_Inert *= m_InertCurve.Evaluate(samplePos);
+                        if (m_FrictionCurve != null && m_FrictionCurve.keys.Length > 0)
+                            p.m_Friction *= m_FrictionCurve.Evaluate(samplePos);
+                        if (m_RadiusCurve != null && m_RadiusCurve.keys.Length > 0)
+                            p.m_Radius *= m_RadiusCurve.Evaluate(samplePos);
+                    }
+                    
+                    p.m_Damping = Mathf.Clamp01(p.m_Damping);
+                    p.m_Elasticity =  Mathf.Clamp01(p.m_Elasticity);
+                    p.m_Stiffness =  Mathf.Clamp01(p.m_Stiffness);
+                    p.m_Inert =  Mathf.Clamp01(p.m_Inert);
+                    p.m_Friction = Mathf.Clamp01(p.m_Friction);
+                    p.m_Radius = Mathf.Abs(p.m_Radius);
 
-                ParticleInfos[i] = p;
+                    particleInfos[j] = p;
+                }
             }
         }
         
         private void InitTransforms()
         {
-            for (int i = 0; i < ParticleInfos.Length; i++)
+            for (int i = 0; i < ParticleInfos.Count; i++)
             {
-                var p = ParticleInfos[i];
-                p.m_LocalPosition = p.m_InitLocalPosition;
-                p.m_LocalRotation = p.m_InitLocalRotation;
-                ParticleInfos[i] = p;
+                var particle = ParticleInfos[i];
+                for (int j = 0; j < particle.Length; j++)
+                {
+                    var p = particle[i];
+                    p.m_LocalPosition = p.m_InitLocalPosition;
+                    p.m_LocalRotation = p.m_InitLocalRotation;
+                    particle[i] = p;
+                }
             }
         }
         
