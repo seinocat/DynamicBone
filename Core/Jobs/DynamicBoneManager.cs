@@ -34,6 +34,7 @@ namespace Seino.DynamicBone
 
         private void OnDestroy()
         {
+            dependency.Complete();
             if (m_HeadInfos.IsCreated) m_HeadInfos.Dispose();
             if (m_HeadTransArray.isCreated) m_HeadTransArray.Dispose();
             if (m_ParticleInfos.IsCreated) m_ParticleInfos.Dispose();
@@ -88,15 +89,20 @@ namespace Seino.DynamicBone
             if (m_JobBones.Contains(bone))
                 return;
             m_JobBones.Add(bone);
-            bone.HeadInfo.m_Offset = m_ParticleInfos.Length;
-            bone.HeadInfo.m_Index = m_HeadInfos.Length;
-            
-            m_HeadInfos.Add(bone.HeadInfo);
-            m_ParticleInfos.AddRange(bone.ParticleInfos);
-            m_HeadTransArray.Add(bone.transform);
-            for (int i = 0; i < MAX_PARTICLE_COUNT; i++)
+
+            for (int i = 0; i < bone.HeadInfos.Count; i++)
             {
-                m_ParticleTransArray.Add(bone.ParticleTransforms[i]);
+                var headInfo = bone.HeadInfos[i];
+                headInfo.m_Offset = m_ParticleInfos.Length;
+                headInfo.m_Index = m_HeadInfos.Length;
+            
+                m_HeadInfos.Add(headInfo);
+                m_ParticleInfos.AddRange(bone.ParticleInfos[i]);
+                m_HeadTransArray.Add(bone.transform);
+                for (int j = 0; j < MAX_PARTICLE_COUNT; j++)
+                {
+                    m_ParticleTransArray.Add(bone.ParticleTransforms[i][j]);
+                }
             }
         }
 
