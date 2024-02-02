@@ -327,9 +327,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 3394006438018448417, guid: 7096b59cc96e4be4fb43eb8c6af95c98, type: 3}
       insertIndex: -1
       addedObject: {fileID: 735877388}
-    - targetCorrespondingSourceObject: {fileID: 3394006438018448417, guid: 7096b59cc96e4be4fb43eb8c6af95c98, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 735877389}
   m_SourcePrefab: {fileID: 100100000, guid: 7096b59cc96e4be4fb43eb8c6af95c98, type: 3}
 --- !u!1 &77394279
 GameObject:
@@ -691,11 +688,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!4 &423062289 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 4795071924125560, guid: 24b4d8ad04155c244b2b776c5532e76f, type: 3}
-  m_PrefabInstance: {fileID: 802189376}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
@@ -865,10 +857,11 @@ MonoBehaviour:
     y: 0
     z: 0
   m_BlendWeight: 1
-  m_Root: {fileID: 2115706208}
-  m_EndRoot: {fileID: 0}
-  m_Colliders: []
-  m_Damping: 0.1
+  m_Roots:
+  - {fileID: 2115706208}
+  - {fileID: 1158197616}
+  m_EndRoots: []
+  m_Damping: 0.05
   m_DampingCurve:
     serializedVersion: 2
     m_Curve: []
@@ -896,7 +889,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  m_Inert: 0.5
+  m_Inert: 0.85
   m_InertCurve:
     serializedVersion: 2
     m_Curve: []
@@ -910,74 +903,6 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  ParticleTransforms: []
---- !u!114 &735877389
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 735877386}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 08f6a4d1cd7b48c4be49f6d468520046, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_Gravity:
-    x: 0
-    y: 0
-    z: 0
-  m_Force:
-    x: 0
-    y: 0
-    z: 0
-  m_BlendWeight: 1
-  m_Root: {fileID: 1158197616}
-  m_EndRoot: {fileID: 0}
-  m_Colliders: []
-  m_Damping: 0.1
-  m_DampingCurve:
-    serializedVersion: 2
-    m_Curve: []
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  m_Elasticity: 0.1
-  m_ElasticityCurve:
-    serializedVersion: 2
-    m_Curve: []
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  m_Stiffness: 0.1
-  m_StiffnessCurve:
-    serializedVersion: 2
-    m_Curve: []
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  m_Friction: 0.1
-  m_FrictionCurve:
-    serializedVersion: 2
-    m_Curve: []
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  m_Inert: 0.5
-  m_InertCurve:
-    serializedVersion: 2
-    m_Curve: []
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  m_Radius: 0
-  m_RadiusCurve:
-    serializedVersion: 2
-    m_Curve: []
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  ParticleTransforms: []
 --- !u!1 &735951150 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3394006438018448739, guid: 7096b59cc96e4be4fb43eb8c6af95c98, type: 3}
@@ -1406,8 +1331,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.076734506, y: 0.70084196, z: -0.07824915, w: -0.7048472}
-  m_LocalPosition: {x: -146.30518, y: 13.603935, z: -63.803516}
+  m_LocalRotation: {x: -0.07192646, y: 0.83381563, z: -0.11412471, w: -0.535307}
+  m_LocalPosition: {x: -3.2964158, y: 4.146374, z: 12.444924}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1538,7 +1463,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Row: 20
-  Col: 10
+  Col: 20
   Prefab: {fileID: 807746445}
   Root: {fileID: 0}
 --- !u!4 &1351691882
@@ -1886,8 +1811,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 398da96061ad49628ee1f2e3a97073a6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Row: 20
-  Col: 20
+  Row: 1
+  Col: 5
   Prefab: {fileID: 1724255880}
   Root: {fileID: 0}
 --- !u!4 &1685235068
@@ -1914,11 +1839,6 @@ Transform:
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3394006438018448739, guid: 7096b59cc96e4be4fb43eb8c6af95c98, type: 3}
   m_PrefabInstance: {fileID: 46505485}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &1736300675 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 4669771663023168, guid: 24b4d8ad04155c244b2b776c5532e76f, type: 3}
-  m_PrefabInstance: {fileID: 802189376}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &1791750770 stripped
 GameObject:
@@ -2017,9 +1937,8 @@ MonoBehaviour:
     y: 0
     z: 0
   m_BlendWeight: 1
-  m_Root: {fileID: 1736300675}
-  m_EndRoot: {fileID: 423062289}
-  m_Colliders: []
+  m_Roots: []
+  m_EndRoots: []
   m_Damping: 0.1
   m_DampingCurve:
     serializedVersion: 2
@@ -2062,7 +1981,6 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  ParticleTransforms: []
 --- !u!1 &2104725624 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1983474337608734, guid: 24b4d8ad04155c244b2b776c5532e76f, type: 3}

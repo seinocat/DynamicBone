@@ -17,7 +17,7 @@ namespace Seino.DynamicBone
         public float m_ObjectScale;
         public float m_Weight;
         public int m_ParticleCount;
-        public int m_Offset;
+        public int m_ParticleOffset;
         public float4x4 m_RootWorldToLocalMatrix;
 
         public bool IsNull;

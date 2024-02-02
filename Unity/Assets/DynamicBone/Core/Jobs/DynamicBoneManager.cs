@@ -22,10 +22,12 @@ namespace Seino.DynamicBone
         private TransformAccessArray m_ParticleTransArray;
         private static float m_DeltaTime;
         private JobHandle dependency;
+        private List<DynamicBoneJob> m_RemoveBones;
 
         private void Awake()
         {
             m_JobBones = new List<DynamicBoneJob>();
+            m_RemoveBones = new List<DynamicBoneJob>();
             m_HeadInfos = new NativeList<HeadInfo>(200, Allocator.Persistent);
             m_HeadTransArray = new TransformAccessArray(200, 64);
             m_ParticleInfos = new NativeList<ParticleInfo>(Allocator.Persistent);
@@ -43,7 +45,6 @@ namespace Seino.DynamicBone
 
         private void LateUpdate()
         {
-            dependency.Complete();
             RemoveJobs();
             ExecuteJobs();
         }
@@ -70,7 +71,6 @@ namespace Seino.DynamicBone
                 ParticleInfos = m_ParticleInfos,
             }.Schedule(particleMaxCount, MAX_PARTICLE_COUNT, headJob);
             
-
             dependency = new UpdateParticle1Job
             {
                 HeadArray = m_HeadInfos,
@@ -87,6 +87,8 @@ namespace Seino.DynamicBone
             {
                 ParticleInfos = m_ParticleInfos
             }.Schedule(m_ParticleTransArray, dependency);
+            
+            dependency.Complete();
         }
 
         public void AddBone(DynamicBoneJob bone)
@@ -98,8 +100,9 @@ namespace Seino.DynamicBone
             for (int i = 0; i < bone.HeadInfos.Count; i++)
             {
                 var headInfo = bone.HeadInfos[i];
-                headInfo.m_Offset = m_ParticleInfos.Length;
+                headInfo.m_ParticleOffset = m_ParticleInfos.Length;
                 headInfo.m_Index = m_HeadInfos.Length;
+                bone.HeadInfos[i] = headInfo;
             
                 m_HeadInfos.Add(headInfo);
                 m_ParticleInfos.AddRange(bone.ParticleInfos[i]);
@@ -115,12 +118,41 @@ namespace Seino.DynamicBone
         {
             if (!m_JobBones.Contains(bone))
                 return;
-            
+            if (m_RemoveBones.Contains(bone))
+                return;
+            m_RemoveBones.Add(bone);
         }
 
         private void RemoveJobs()
         {
+            int count = m_RemoveBones.Count;
+            if (count == 0)
+                return;
             
+            for (int i = count - 1; i >= 0; i--)
+            {
+                var bone = m_RemoveBones[i];
+                for (int j = 0; j < bone.HeadInfos.Count; j++)
+                {
+                    var headInfo = bone.HeadInfos[j];
+                    int headIndex = headInfo.m_Index;
+                    int particleIdx = headInfo.m_ParticleOffset;
+                    
+                    //移除head
+                    m_HeadInfos.RemoveAtSwapBack(headIndex);
+                    m_HeadTransArray.RemoveAtSwapBack(headIndex);
+                    //移除particle
+                    m_ParticleInfos.RemoveRangeSwapBack(particleIdx, MAX_PARTICLE_COUNT);
+                    for (int k = particleIdx + MAX_PARTICLE_COUNT - 1; k >= particleIdx ; k--)
+                    {
+                        m_ParticleTransArray.RemoveAtSwapBack(k);
+                    }
+                    
+                }
+                
+                m_RemoveBones.RemoveAt(i);
+                m_JobBones.Remove(bone);
+            }
         }
 
         #region Job
@@ -135,6 +167,31 @@ namespace Seino.DynamicBone
                 HeadInfo info = HeadArray[index];
                 info.m_ObjectPosition = transform.position;
                 info.m_ObjectRotation = transform.rotation;
+                HeadArray[index] = info;
+            }
+        }
+        
+        [BurstCompile]
+        private struct PrepareHeadJob : IJobParallelFor
+        {
+            public NativeArray<HeadInfo> HeadArray;
+            public float DeltaTime;
+
+            public void Execute(int index)
+            {
+                //计算位移和合力部分
+                HeadInfo info = HeadArray[index];
+                info.m_ObjectMove = info.m_ObjectPosition - info.m_ObjectPrevPosition;
+                info.m_ObjectPrevPosition = info.m_ObjectPosition;
+                    
+                float3 force = info.m_Gravity;
+                float3 fdir = math.normalizesafe(force);
+                float3 pf = fdir * math.max(math.dot(force, fdir), 0);
+                force -= pf;
+                force = (force + info.m_Force) * info.m_ObjectScale;
+                info.m_FinalForce = force;
+                info.m_DeltaTime = DeltaTime;
+                    
                 HeadArray[index] = info;
             }
         }
@@ -163,7 +220,7 @@ namespace Seino.DynamicBone
                 }
                 else
                 {
-                    var p0 = ParticleInfos[info.m_Offset + p.m_ParentIndex];
+                    var p0 = ParticleInfos[info.m_ParticleOffset + p.m_ParentIndex];
                     objectPosition = p0.m_Position;
                     objectRotation = p0.m_Rotation;
                 }
@@ -181,31 +238,6 @@ namespace Seino.DynamicBone
         }
 
         [BurstCompile]
-        private struct PrepareHeadJob : IJobParallelFor
-        {
-            public NativeArray<HeadInfo> HeadArray;
-            public float DeltaTime;
-
-            public void Execute(int index)
-            {
-                //计算惯性位移和合力部分
-                HeadInfo info = HeadArray[index];
-                info.m_ObjectMove = info.m_ObjectPosition - info.m_ObjectPrevPosition;
-                info.m_ObjectPrevPosition = info.m_ObjectPosition;
-                    
-                float3 force = info.m_Gravity;
-                float3 fdir = math.normalizesafe(force);
-                float3 pf = fdir * math.max(math.dot(force, fdir), 0);
-                force -= pf;
-                force = (force + info.m_Force) * info.m_ObjectScale;
-                info.m_FinalForce = force;
-                info.m_DeltaTime = DeltaTime;
-                    
-                HeadArray[index] = info;
-            }
-        }
-        
-        [BurstCompile]
         private struct UpdateParticle1Job : IJobParallelFor
         {
             [ReadOnly]
@@ -219,7 +251,7 @@ namespace Seino.DynamicBone
                 
                 int offset = index % MAX_PARTICLE_COUNT;
                 if (offset >= info.m_ParticleCount) return;
-                int pIdx = info.m_Offset + offset;
+                int pIdx = info.m_ParticleOffset + offset;
                 var p = ParticleInfos[pIdx];
 
                 if (p.m_ParentIndex >= 0)
@@ -263,9 +295,9 @@ namespace Seino.DynamicBone
                 int offset = index % MAX_PARTICLE_COUNT;
                 if (offset > info.m_ParticleCount) return;
 
-                int pIdx = info.m_Offset + offset;
+                int pIdx = info.m_ParticleOffset + offset;
                 var p = ParticleInfos[pIdx];
-                var p0 = ParticleInfos[info.m_Offset + p.m_ParentIndex];
+                var p0 = ParticleInfos[info.m_ParticleOffset + p.m_ParentIndex];
 
                 float3 pos = p.m_Position;
                 float3 parentPos = p0.m_Position;
@@ -319,7 +351,6 @@ namespace Seino.DynamicBone
         }
 
         #endregion
-        
         
     }
 }
