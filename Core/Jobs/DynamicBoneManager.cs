@@ -45,6 +45,7 @@ namespace Seino.DynamicBone
 
         private void LateUpdate()
         {
+            dependency.Complete();
             RemoveJobs();
             ExecuteJobs();
         }
@@ -53,7 +54,7 @@ namespace Seino.DynamicBone
         {
             int jobBoneCount = m_HeadInfos.Length;
             int particleMaxCount = jobBoneCount * MAX_PARTICLE_COUNT;
-            
+
             var setupJob = new BoneSetupJob
             {
                 HeadArray = m_HeadInfos
@@ -87,8 +88,6 @@ namespace Seino.DynamicBone
             {
                 ParticleInfos = m_ParticleInfos
             }.Schedule(m_ParticleTransArray, dependency);
-            
-            dependency.Complete();
         }
 
         public void AddBone(DynamicBoneJob bone)
@@ -147,7 +146,6 @@ namespace Seino.DynamicBone
                     {
                         m_ParticleTransArray.RemoveAtSwapBack(k);
                     }
-                    
                 }
                 
                 m_RemoveBones.RemoveAt(i);
