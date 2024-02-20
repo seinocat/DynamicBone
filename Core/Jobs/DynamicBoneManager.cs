@@ -260,12 +260,6 @@ namespace Seino.DynamicBone
                     float3 rmove = info.m_ObjectMove * p.m_Inert;
                     p.m_PrevPosition = p.m_WorldPosition + rmove;
                     float damping = p.m_Damping;
-                    if (p.m_IsCollide)
-                    {
-                        damping = Mathf.Clamp01(damping + p.m_Friction);
-                        p.m_IsCollide = false;
-                    }
-                    
                     p.m_Position += v * (1 - damping) + info.m_FinalForce + rmove;
                     
                 }else
