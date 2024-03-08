@@ -139,15 +139,25 @@ namespace Seino.DynamicBone
             {
                 var target = m_RemoveBones[i];
                 var bone = m_JobBones.Find(x => x.Uid == target.Uid);
+                
                 for (int j = bone.HeadInfos.Count - 1; j >= 0; j--)
                 {
                     var headInfo = bone.HeadInfos[j];
                     int headIndex = headInfo.m_Index;
                     int particleIdx = headInfo.m_ParticleOffset;
                     
+                    // 交换Bone的HeadInfo Index
+                    var uid = m_HeadInfos[^1].m_JobUid;
+                    var swapBone = m_JobBones.Find(x => x.Uid == uid);
+                    var info = swapBone.HeadInfos[j];
+                    info.m_Index = headIndex;
+                    info.m_ParticleOffset = particleIdx;
+                    swapBone.HeadInfos[j] = info;
+
                     //移除head
                     m_HeadInfos.RemoveAtSwapBack(headIndex);
                     m_HeadTransArray.RemoveAtSwapBack(headIndex);
+                    
                     //移除particle
                     m_ParticleInfos.RemoveRangeSwapBack(particleIdx, MAX_PARTICLE_COUNT);
                     for (int k = particleIdx + MAX_PARTICLE_COUNT - 1; k >= particleIdx ; k--)
@@ -158,18 +168,8 @@ namespace Seino.DynamicBone
                 
                 m_RemoveBones.RemoveAt(i);
                 m_JobBones.Remove(bone);
-                
-                //重新分配Index
-                for (int j = 0; j < m_HeadInfos.Length; j++)
-                {
-                    var headInfo = m_HeadInfos[j];
-                    var jobBone = m_JobBones.Find(x => x.Uid == headInfo.m_JobUid);
-                    var boneHeadInfo = jobBone.HeadInfos[headInfo.m_JobIndex];
-                    boneHeadInfo.m_Index = j;
-                    boneHeadInfo.m_ParticleOffset = j * MAX_PARTICLE_COUNT;
-                    jobBone.HeadInfos[headInfo.m_JobIndex] = boneHeadInfo;
-                }
-                
+
+                // 重新分配Index
                 for (int j = 0; j < m_HeadInfos.Length; j++)
                 {
                     var headInfo = m_HeadInfos[j];
