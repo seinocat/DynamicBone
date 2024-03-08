@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -71,12 +72,14 @@ namespace Seino.DynamicBone
         private int m_ParticleCount;
         private bool m_Inited;
 
+        public long Uid;
         public List<HeadInfo> HeadInfos;
         public List<NativeArray<ParticleInfo>> ParticleInfos;
         public List<Transform[]> ParticleTransforms;
 
         private void Awake()
         {
+            Uid = Guid.NewGuid().GetHashCode();
             if (m_Roots == null)
                 return;
             SetupParticles();
@@ -128,6 +131,8 @@ namespace Seino.DynamicBone
                 m_BoneTotalLength = 0;
             
                 HeadInfo headInfo = new HeadInfo();
+                headInfo.m_JobUid = this.Uid;
+                headInfo.m_JobIndex = i;
                 headInfo.m_ObjectScale = math.abs(transform.lossyScale.x);
                 headInfo.m_ObjectPrevPosition = transform.position;
                 headInfo.m_ObjectMove = float3.zero;

@@ -52,6 +52,9 @@ namespace Seino.DynamicBone
 
         private void ExecuteJobs()
         {
+            if (m_HeadInfos.Length == 0)
+                return;
+            
             int jobBoneCount = m_HeadInfos.Length;
             int particleMaxCount = jobBoneCount * MAX_PARTICLE_COUNT;
 
@@ -95,7 +98,11 @@ namespace Seino.DynamicBone
             if (m_JobBones.Contains(bone))
                 return;
             m_JobBones.Add(bone);
+            AddInternal(bone);
+        }
 
+        private void AddInternal(DynamicBoneJob bone)
+        {
             for (int i = 0; i < bone.HeadInfos.Count; i++)
             {
                 var headInfo = bone.HeadInfos[i];
@@ -127,11 +134,12 @@ namespace Seino.DynamicBone
             int count = m_RemoveBones.Count;
             if (count == 0)
                 return;
-            
+
             for (int i = count - 1; i >= 0; i--)
             {
-                var bone = m_RemoveBones[i];
-                for (int j = 0; j < bone.HeadInfos.Count; j++)
+                var target = m_RemoveBones[i];
+                var bone = m_JobBones.Find(x => x.Uid == target.Uid);
+                for (int j = bone.HeadInfos.Count - 1; j >= 0; j--)
                 {
                     var headInfo = bone.HeadInfos[j];
                     int headIndex = headInfo.m_Index;
@@ -150,6 +158,25 @@ namespace Seino.DynamicBone
                 
                 m_RemoveBones.RemoveAt(i);
                 m_JobBones.Remove(bone);
+                
+                //重新分配Index
+                for (int j = 0; j < m_HeadInfos.Length; j++)
+                {
+                    var headInfo = m_HeadInfos[j];
+                    var jobBone = m_JobBones.Find(x => x.Uid == headInfo.m_JobUid);
+                    var boneHeadInfo = jobBone.HeadInfos[headInfo.m_JobIndex];
+                    boneHeadInfo.m_Index = j;
+                    boneHeadInfo.m_ParticleOffset = j * MAX_PARTICLE_COUNT;
+                    jobBone.HeadInfos[headInfo.m_JobIndex] = boneHeadInfo;
+                }
+                
+                for (int j = 0; j < m_HeadInfos.Length; j++)
+                {
+                    var headInfo = m_HeadInfos[j];
+                    headInfo.m_Index = j;
+                    headInfo.m_ParticleOffset = j * MAX_PARTICLE_COUNT;
+                    m_HeadInfos[j] = headInfo;
+                }
             }
         }
 
