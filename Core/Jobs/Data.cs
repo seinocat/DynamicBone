@@ -5,6 +5,8 @@ namespace Seino.DynamicBone
     public struct HeadInfo
     {
         public int m_Index;
+        public long m_JobUid;
+        public int m_JobIndex;
         public float m_DeltaTime;
         public float3 m_ObjectMove;
         public float3 m_ObjectPosition;
