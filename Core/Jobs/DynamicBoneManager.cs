@@ -137,9 +137,7 @@ namespace Seino.DynamicBone
 
             for (int i = count - 1; i >= 0; i--)
             {
-                var target = m_RemoveBones[i];
-                var bone = m_JobBones.Find(x => x.Uid == target.Uid);
-                
+                var bone = m_RemoveBones[i];
                 for (int j = bone.HeadInfos.Count - 1; j >= 0; j--)
                 {
                     var headInfo = bone.HeadInfos[j];
@@ -166,9 +164,6 @@ namespace Seino.DynamicBone
                     }
                 }
                 
-                m_RemoveBones.RemoveAt(i);
-                m_JobBones.Remove(bone);
-
                 // 重新分配Index
                 for (int j = 0; j < m_HeadInfos.Length; j++)
                 {
@@ -177,6 +172,10 @@ namespace Seino.DynamicBone
                     headInfo.m_ParticleOffset = j * MAX_PARTICLE_COUNT;
                     m_HeadInfos[j] = headInfo;
                 }
+                
+                m_RemoveBones.RemoveAt(i);
+                m_JobBones.Remove(bone);
+
             }
         }
 
