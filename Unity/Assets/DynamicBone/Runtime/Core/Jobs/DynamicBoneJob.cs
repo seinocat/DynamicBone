@@ -89,7 +89,7 @@ namespace Seino.DynamicBone
 
         private void OnDestroy()
         {
-            DynamicBoneManager.Instance.RemoveBone(this);
+            DynamicBoneManager.Instance?.RemoveBone(this);
         }
 
         private void OnValidate()
