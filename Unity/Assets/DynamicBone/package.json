@@ -1,0 +1,11 @@
+﻿{
+  "name": "com.seinocat.dynamicbone",
+  "displayName": "Seino DynamicBone",
+  "description": "Dynamic Bone",
+  "url" : "https://github.com/seinocat/DynamicBone.git",
+  "version": "0.0.1",
+  "unity": "2020.3",
+  "author": {
+    "name": "SeinoCat"
+  }
+}

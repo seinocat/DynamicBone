@@ -6,7 +6,6 @@ namespace Seino.DynamicBone
     {
         public int m_Index;
         public long m_JobUid;
-        public int m_JobIndex;
         public float m_DeltaTime;
         public float3 m_ObjectMove;
         public float3 m_ObjectPosition;
@@ -21,8 +20,6 @@ namespace Seino.DynamicBone
         public int m_ParticleCount;
         public int m_ParticleOffset;
         public float4x4 m_RootWorldToLocalMatrix;
-
-        public bool IsNull;
     }
         
     public struct ParticleInfo

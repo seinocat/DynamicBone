@@ -132,7 +132,6 @@ namespace Seino.DynamicBone
             
                 HeadInfo headInfo = new HeadInfo();
                 headInfo.m_JobUid = this.Uid;
-                headInfo.m_JobIndex = i;
                 headInfo.m_ObjectScale = math.abs(transform.lossyScale.x);
                 headInfo.m_ObjectPrevPosition = transform.position;
                 headInfo.m_ObjectMove = float3.zero;
