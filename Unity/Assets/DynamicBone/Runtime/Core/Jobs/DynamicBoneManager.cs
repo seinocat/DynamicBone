@@ -4,7 +4,6 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
-using UnityEngine;
 using UnityEngine.Jobs;
 
 namespace Seino.DynamicBone
@@ -46,7 +45,7 @@ namespace Seino.DynamicBone
         private void LateUpdate()
         {
             dependency.Complete();
-            RemoveJobs();
+            RemoveInternal();
             ExecuteJobs();
         }
 
@@ -100,6 +99,15 @@ namespace Seino.DynamicBone
             m_JobBones.Add(bone);
             AddInternal(bone);
         }
+        
+        public void RemoveBone(DynamicBoneJob bone)
+        {
+            if (!m_JobBones.Contains(bone))
+                return;
+            if (m_RemoveBones.Contains(bone))
+                return;
+            m_RemoveBones.Add(bone);
+        }
 
         private void AddInternal(DynamicBoneJob bone)
         {
@@ -119,17 +127,8 @@ namespace Seino.DynamicBone
                 }
             }
         }
-
-        public void RemoveBone(DynamicBoneJob bone)
-        {
-            if (!m_JobBones.Contains(bone))
-                return;
-            if (m_RemoveBones.Contains(bone))
-                return;
-            m_RemoveBones.Add(bone);
-        }
-
-        private void RemoveJobs()
+        
+        private void RemoveInternal()
         {
             int count = m_RemoveBones.Count;
             if (count == 0)
